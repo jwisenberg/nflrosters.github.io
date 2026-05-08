@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFL Rosters</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Arial Narrow', Arial, sans-serif; background: #1a1a2e; color: #fff; min-height: 100vh; padding: 12px; }
+  #page-header { text-align: center; padding: 10px 0 16px; }
+  #page-header h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  #page-header .subtitle { font-size: 12px; color: #aaa; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+  #last-updated { font-size: 11px; color: #888; margin-top: 4px; }
+  #division-filter { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 14px; }
+  #division-filter button { background: #2a2a4a; color: #ccc; border: 1px solid #444; padding: 5px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; transition: all 0.15s; }
+  #division-filter button:hover, #division-filter button.active { background: #fff; color: #1a1a2e; border-color: #fff; }
+  #rosters-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; }
+  .team-block { flex: 0 0 auto; width: 260px; }
+  .team-header { display: grid; grid-template-columns: 28px 1fr 36px; padding: 5px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: #fff; border-radius: 3px 3px 0 0; align-items: center; }
+  .team-header .col-name { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team-table { width: 100%; border-collapse: collapse; font-size: 11.5px; background: #fff; color: #111; }
+  .team-table tr { border-bottom: 1px solid #e8e8e8; }
+  .team-table tr:last-child { border-bottom: none; }
+  .team-table tr:nth-child(even) { background: #f5f5f5; }
+  .team-table td { padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team-table td.num { width: 28px; text-align: center; font-weight: 700; font-size: 11px; color: #555; }
+  .team-table td.name { max-width: 165px; font-weight: 500; }
+  .team-table td.pos { width: 34px; text-align: center; font-weight: 700; font-size: 10.5px; color: #fff; border-radius: 2px; padding: 1px 3px; }
+  #status { text-align: center; padding: 50px 20px; font-size: 14px; color: #aaa; letter-spacing: 1px; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #444; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #error-box { display: none; background: #1f0d0d; border: 1px solid #e74c3c; color: #ffaaaa; border-radius: 8px; padding: 20px 24px; margin: 20px auto; max-width: 680px; font-size: 13px; line-height: 1.8; }
+  #error-box h2 { color: #e74c3c; font-size: 15px; margin-bottom: 10px; }
+  #error-box code { background: #2a0f0f; padding: 2px 7px; border-radius: 3px; font-size: 12px; color: #fff; }
+  @media (max-width: 600px) { .team-block { width: 100%; } body { padding: 8px; } }
+</style>
+</head>
+<body>
+
+<div id="page-header">
+  <h1>&#11044; NFL Rosters &#11044</h1>
+  <div class="subtitle">2026 Season</div>
+  <div id="last-updated"></div>
+</div>
+
+<div id="division-filter">
+  <button class="active" onclick="filterDivision('ALL',this)">All Teams</button>
+  <button onclick="filterDivision('AFC East',this)">AFC East</button>
+  <button onclick="filterDivision('AFC North',this)">AFC North</button>
+  <button onclick="filterDivision('AFC South',this)">AFC South</button>
+  <button onclick="filterDivision('AFC West',this)">AFC West</button>
+  <button onclick="filterDivision('NFC East',this)">NFC East</button>
+  <button onclick="filterDivision('NFC North',this)">NFC North</button>
+  <button onclick="filterDivision('NFC South',this)">NFC South</button>
+  <button onclick="filterDivision('NFC West',this)">NFC West</button>
+</div>
+
+<div id="status"><span class="spinner"></span>Loading roster data&hellip;</div>
+<div id="error-box"></div>
+<div id="rosters-grid"></div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTrHTwfo8s03aCt0hl-o3SPD2mSJc0XL3JYz3yAv_UmawK5Xjdiqh81o5wvHkYWBqp84sjWdKg7sd3-/pub?gid=1730930265&single=true&output=csv";
+
+// No header row. Columns are 0-indexed: A=0, B=1, C=2, D=3, E=4, F=5
+var COL_TEAM   = 1;  // B
+var COL_NUM    = 2;  // C
+var COL_PLAYER = 3;  // D
+var COL_POS    = 4;  // E
+var COL_STATUS = 5;  // F — only include ACT or IPP
+
+var TEAM_META = {
+  "Arizona Cardinals":    { p:"#97233F", div:"NFC West"  },
+  "Atlanta Falcons":      { p:"#A71930", div:"NFC South" },
+  "Baltimore Ravens":     { p:"#241773", div:"AFC North" },
+  "Buffalo Bills":        { p:"#00338D", div:"AFC East"  },
+  "Carolina Panthers":    { p:"#0085CA", div:"NFC South" },
+  "Chicago Bears":        { p:"#0B162A", div:"NFC North" },
+  "Cincinnati Bengals":   { p:"#FB4F14", div:"AFC North" },
+  "Cleveland Browns":     { p:"#FF3C00", div:"AFC North" },
+  "Dallas Cowboys":       { p:"#003594", div:"NFC East"  },
+  "Denver Broncos":       { p:"#FB4F14", div:"AFC West"  },
+  "Detroit Lions":        { p:"#0076B6", div:"NFC North" },
+  "Green Bay Packers":    { p:"#203731", div:"NFC North" },
+  "Houston Texans":       { p:"#03202F", div:"AFC South" },
+  "Indianapolis Colts":   { p:"#002C5F", div:"AFC South" },
+  "Jacksonville Jaguars": { p:"#006778", div:"AFC South" },
+  "Kansas City Chiefs":   { p:"#E31837", div:"AFC West"  },
+  "Las Vegas Raiders":    { p:"#4a4a4a", div:"AFC West"  },
+  "Los Angeles Chargers": { p:"#0080C6", div:"AFC West"  },
+  "Los Angeles Rams":     { p:"#003594", div:"NFC West"  },
+  "Miami Dolphins":       { p:"#008E97", div:"AFC East"  },
+  "Minnesota Vikings":    { p:"#4F2683", div:"NFC North" },
+  "New England Patriots": { p:"#002244", div:"AFC East"  },
+  "New Orleans Saints":   { p:"#101820", div:"NFC South" },
+  "New York Giants":      { p:"#0B2265", div:"NFC East"  },
+  "New York Jets":        { p:"#125740", div:"AFC East"  },
+  "Philadelphia Eagles":  { p:"#004C54", div:"NFC East"  },
+  "Pittsburgh Steelers":  { p:"#101820", div:"AFC North" },
+  "San Francisco 49ers":  { p:"#AA0000", div:"NFC West"  },
+  "Seattle Seahawks":     { p:"#002244", div:"NFC West"  },
+  "Tampa Bay Buccaneers": { p:"#D50A0A", div:"NFC South" },
+  "Tennessee Titans":     { p:"#0C2340", div:"AFC South" },
+  "Washington Commanders":{ p:"#5A1414", div:"NFC East"  }
+};
+
+var POS_COLORS = {
+  QB:"#c0392b", RB:"#27ae60", FB:"#1e8449",
+  WR:"#2471a3", TE:"#1a5276",
+  T:"#717d7e",  G:"#717d7e",  C:"#717d7e", OT:"#717d7e", OG:"#717d7e", OL:"#717d7e",
+  DE:"#6c3483", DT:"#6c3483", NT:"#6c3483", DL:"#6c3483",
+  LB:"#8e44ad", ILB:"#8e44ad", OLB:"#8e44ad", ED:"#7d3c98",
+  CB:"#d35400", S:"#ba4a00",  FS:"#ba4a00", SS:"#ba4a00", DB:"#d35400",
+  K:"#117864",  P:"#0e6655",  LS:"#148f77"
+};
+
+var DIV_ORDER = ["AFC East","AFC North","AFC South","AFC West","NFC East","NFC North","NFC South","NFC West"];
+
+function posColor(p) { return POS_COLORS[p] || "#556"; }
+
+function parseCSV(text) {
+  var rows = [];
+  var lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (!line.trim()) continue;
+    var cols = [], cur = "", inQ = false;
+    for (var j = 0; j < line.length; j++) {
+      var c = line[j];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
+      else { cur += c; }
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function buildTeamMap(rows) {
+  if (rows.length < 1) throw new Error("Sheet appears empty.");
+  var map = {};
+
+  for (var r = 0; r < rows.length; r++) {
+    var row = rows[r];
+    var status = (row[COL_STATUS] || "").trim().toUpperCase();
+    if (status !== "ACT" && status !== "IPP") continue;
+
+    var team   = (row[COL_TEAM]   || "").trim();
+    var num    = (row[COL_NUM]    || "").trim();
+    var player = (row[COL_PLAYER] || "").trim();
+    var pos    = (row[COL_POS]    || "").trim().toUpperCase();
+
+    if (!team || !player) continue;
+
+    if (!map[team]) map[team] = [];
+    var n = num === '0' ? 0 : (parseInt(num, 10) || 999);
+    map[team].push({ num: num, player: player, pos: pos, numSort: n });
+  }
+
+  // Sort each team by jersey number
+  for (var t in map) {
+    map[t].sort(function(a, b) { return a.numSort - b.numSort; });
+  }
+
+  if (Object.keys(map).length === 0)
+    throw new Error("No players found after filtering for ACT/IPP in column F.");
+  return map;
+}
+
+function renderTeam(teamName, players, meta) {
+  var color = (meta && meta.p) ? meta.p : "#333";
+
+  var hdr = document.createElement("div");
+  hdr.className = "team-header";
+  hdr.style.background = color;
+  hdr.innerHTML = "<span>#</span><span class='col-name'>" + teamName + " (" + players.length + ")</span><span style='text-align:right'>POS</span>";
+
+  var tbl = document.createElement("table");
+  tbl.className = "team-table";
+  for (var i = 0; i < players.length; i++) {
+    var pl = players[i];
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td class='num'>" + pl.num + "</td>" +
+      "<td class='name'>" + pl.player + "</td>" +
+      "<td class='pos' style='background:" + posColor(pl.pos) + "'>" + pl.pos + "</td>";
+    tbl.appendChild(tr);
+  }
+
+  var block = document.createElement("div");
+  block.className = "team-block";
+  block.dataset.division = (meta && meta.div) ? meta.div : "Unknown";
+  block.appendChild(hdr);
+  block.appendChild(tbl);
+  return block;
+}
+
+function filterDivision(div, btn) {
+  document.querySelectorAll("#division-filter button").forEach(function(b) { b.classList.remove("active"); });
+  btn.classList.add("active");
+  document.querySelectorAll(".team-block").forEach(function(el) {
+    el.style.display = (div === "ALL" || el.dataset.division === div) ? "" : "none";
+  });
+}
+
+async function loadRosters() {
+  var statusEl = document.getElementById("status");
+  var errorEl  = document.getElementById("error-box");
+  var grid     = document.getElementById("rosters-grid");
+
+  try {
+    var resp = await fetch(CSV_URL);
+    if (!resp.ok) throw new Error("HTTP " + resp.status + " fetching sheet.");
+
+    var text = await resp.text();
+    if (text.trim().startsWith("<!"))
+      throw new Error("Google returned a login page. Go to File &rarr; Share &rarr; Publish to web &rarr; CSV and publish the sheet.");
+
+    var rows    = parseCSV(text);
+    var teamMap = buildTeamMap(rows);
+    var teams   = Object.keys(teamMap).sort(function(a, b) {
+      var da = (TEAM_META[a] && TEAM_META[a].div) ? TEAM_META[a].div : "ZZZ";
+      var db = (TEAM_META[b] && TEAM_META[b].div) ? TEAM_META[b].div : "ZZZ";
+      if (da !== db) return DIV_ORDER.indexOf(da) - DIV_ORDER.indexOf(db);
+      return a.localeCompare(b);
+    });
+
+    statusEl.style.display = "none";
+
+    var now = new Date();
+    document.getElementById("last-updated").textContent =
+      "Last refreshed: " + now.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) +
+      " at " + now.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+
+    for (var i = 0; i < teams.length; i++) {
+      grid.appendChild(renderTeam(teams[i], teamMap[teams[i]], TEAM_META[teams[i]]));
+    }
+
+  } catch(err) {
+    statusEl.style.display = "none";
+    errorEl.style.display  = "block";
+    errorEl.innerHTML =
+      "<h2>&#9888;&#65039; Could not load rosters</h2><p>" + err.message + "</p>";
+  }
+}
+
+loadRosters();
+</script>
+</body>
+</html>
