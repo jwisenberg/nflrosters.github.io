@@ -14,7 +14,7 @@
   const REFRESH_MS = 5 * 60 * 1000; // auto-refresh every 5 minutes
 
   let ROSTER = [];
-  let state = { search: '', group: 'all', status: 'all', team: 'all', sort: 'overall' };
+  let state = { search: '', group: 'all', status: 'all', team: 'all', position: 'all', sort: 'overall' };
 
   // -------- Theme toggle --------
   (function () {
@@ -55,6 +55,11 @@
     const inch = Math.round(n % 12);
     return `${ft}'${inch}"`;
   }
+  // Jersey #0 is valid and must show "#0"; only truly blank values fall back to "#--".
+  function jerseyLabel(jersey) {
+    if (jersey === null || jersey === undefined || jersey === '') return '#--';
+    return '#' + jersey;
+  }
   // Parses a salary cell. Until you fill in real numbers, this will be blank/"TDB" -> shows a placeholder.
   function parseSalary(raw) {
     if (raw == null) return null;
@@ -84,21 +89,19 @@
 
   const STATUS_LABELS = {
     ACT: 'Active', PRA: 'Practice Squad', PS: 'Practice Squad', DEV: 'Practice Squad',
-    PUP: 'PUP', NFI: 'NFI', IR: 'Injured Reserve', INJ: 'Injured',
+    PUP: 'PUP', NFI: 'NFI', IPP: 'IPP', IR: 'IR', INJ: 'IR',
     SUS: 'Suspended', EXE: 'Exempt', RES: 'Reserved', FA: 'Free Agent', '': 'Free Agent',
-  };
-  const STATUS_TIER = {
-    ACT: 'ACT',
-    PUP: 'WARN', NFI: 'WARN', IPP: 'WARN',
-    IR: 'OUT', INJ: 'OUT', SUS: 'OUT', EXE: 'OUT',
   };
   function statusLabel(code) {
     const c = (code || '').trim().toUpperCase();
     return STATUS_LABELS[c] || c || 'Free Agent';
   }
+  // Only ACT (green) and IPP (amber) get special treatment — everything else is red.
   function statusTier(code) {
     const c = (code || '').trim().toUpperCase();
-    return STATUS_TIER[c] || (c ? 'NEUTRAL' : 'NEUTRAL');
+    if (c === 'ACT') return 'ACT';
+    if (c === 'IPP') return 'WARN';
+    return 'OUT';
   }
 
   function headshotUrl(espnId) {
@@ -175,7 +178,7 @@
       errBanner.hidden = true;
       document.getElementById('lastSynced').textContent = 'Last synced ' + new Date().toLocaleTimeString();
       populateTeamSelect();
-      fillStats();
+      populatePositionSelect();
       renderRoster();
     } catch (err) {
       console.error('Roster Hub sync error:', err);
@@ -189,18 +192,6 @@
       skeleton.style.display = 'none';
       grid.style.display = 'grid';
     }
-  }
-
-  function fillStats() {
-    document.getElementById('statPlayers').textContent = ROSTER.length.toLocaleString();
-    const teams = new Set(ROSTER.map((p) => p.team).filter((t) => t && t !== 'Free Agents'));
-    document.getElementById('statTeams').textContent = teams.size || '—';
-    const active = ROSTER.filter((p) => (p.status || '').toUpperCase() === 'ACT').length;
-    document.getElementById('statActive').textContent = active.toLocaleString();
-    const top = ROSTER.reduce((m, p) => (p.overall && p.overall > m ? p.overall : m), 0);
-    document.getElementById('statTop').textContent = top || '—';
-    document.getElementById('rosterSub').textContent =
-      `${ROSTER.length.toLocaleString()} players across ${teams.size} teams · Click any card for full bio.`;
   }
 
   function populateTeamSelect() {
@@ -217,13 +208,25 @@
     state.team = sel.value;
   }
 
+  function populatePositionSelect() {
+    const sel = document.getElementById('positionSelect');
+    const current = sel.value || 'all';
+    const positions = Array.from(new Set(ROSTER.map((p) => p.position).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="all">All Positions</option>' +
+      positions.map((pos) => `<option value="${escape(pos)}">${escape(pos)}</option>`).join('');
+    if (positions.includes(current) || current === 'all') sel.value = current;
+    state.position = sel.value;
+  }
+
   // -------- Filter / sort --------
   function filterAndSortRoster() {
     let list = ROSTER.slice();
     if (state.team !== 'all') list = list.filter((p) => p.team === state.team);
+    if (state.position !== 'all') list = list.filter((p) => p.position === state.position);
     if (state.group !== 'all') list = list.filter((p) => positionGroup(p.position) === state.group);
     if (state.status === 'ACT') list = list.filter((p) => (p.status || '').toUpperCase() === 'ACT');
-    if (state.status === 'OTHER') list = list.filter((p) => (p.status || '').toUpperCase() !== 'ACT');
+    if (state.status === 'IPP') list = list.filter((p) => (p.status || '').toUpperCase() === 'IPP');
+    if (state.status === 'OTHER') list = list.filter((p) => !['ACT', 'IPP'].includes((p.status || '').toUpperCase()));
     if (state.search) {
       const q = state.search.toLowerCase();
       list = list.filter(
@@ -232,14 +235,14 @@
           (p.college || '').toLowerCase().includes(q) ||
           (p.position || '').toLowerCase().includes(q) ||
           (p.team || '').toLowerCase().includes(q) ||
-          String(p.jersey || '').includes(q)
+          String(p.jersey != null ? p.jersey : '').includes(q)
       );
     }
     const sortFns = {
       overall: (a, b) => (b.overall || 0) - (a.overall || 0),
       age_asc: (a, b) => (a.age || 0) - (b.age || 0),
       age_desc: (a, b) => (b.age || 0) - (a.age || 0),
-      jersey: (a, b) => (a.jersey || 999) - (b.jersey || 999),
+      jersey: (a, b) => (a.jersey === '' || a.jersey == null ? 999 : a.jersey) - (b.jersey === '' || b.jersey == null ? 999 : b.jersey),
       name: (a, b) => a.name.localeCompare(b.name),
       team: (a, b) => (a.team || '').localeCompare(b.team || ''),
     };
@@ -273,7 +276,7 @@
       <article class="player-card" data-pgid="${escape(p.pgid)}" tabindex="0" role="button" aria-label="${escape(p.name)} details">
         <div class="pc-top">
           <div class="pc-avatar">${avatarInner}</div>
-          <div class="pc-jersey">${p.jersey ? '#' + p.jersey : ''}</div>
+          <div class="pc-jersey">${jerseyLabel(p.jersey)}</div>
           <div class="pc-headinfo">
             <span class="pc-pos">${escape(p.position || '—')}</span>
             <span class="status-badge status-${sTier}">${escape(statusLabel(p.status))}</span>
@@ -340,7 +343,7 @@
             <span>${escape(p.college || '')}</span>
           </div>
         </div>
-        <div class="mh-jersey">${p.jersey ? '#' + p.jersey : ''}</div>
+        <div class="mh-jersey">${jerseyLabel(p.jersey)}</div>
       </div>
       <div class="modal-ovr-row">
         <div class="mob-overall ${tier}">${p.overall || '—'}</div>
@@ -364,7 +367,7 @@
         </div>
         <div class="mb-box">
           <div class="mb-box-label">Jersey #</div>
-          <div class="mb-box-val">${p.jersey ? '#' + p.jersey : '—'}</div>
+          <div class="mb-box-val">${jerseyLabel(p.jersey)}</div>
         </div>
       </div>
     `;
@@ -375,6 +378,7 @@
     document.getElementById('search').addEventListener('input', (e) => { state.search = e.target.value; renderRoster(); });
     document.getElementById('sort').addEventListener('change', (e) => { state.sort = e.target.value; renderRoster(); });
     document.getElementById('teamSelect').addEventListener('change', (e) => { state.team = e.target.value; renderRoster(); });
+    document.getElementById('positionSelect').addEventListener('change', (e) => { state.position = e.target.value; renderRoster(); });
 
     document.getElementById('groupFilter').addEventListener('click', (e) => {
       const b = e.target.closest('.chip');

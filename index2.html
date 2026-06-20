@@ -23,7 +23,6 @@
       </svg>
       <div class="brand-text">
         <div class="brand-title">ROSTER HUB</div>
-        <div class="brand-sub">Live from your sheet</div>
       </div>
     </a>
     <div class="topbar-actions">
@@ -40,24 +39,6 @@
   </div>
 </header>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-bg" aria-hidden="true"></div>
-  <div class="container hero-inner">
-    <div class="hero-content">
-      <span class="season-tag">LIVE FRANCHISE DATA</span>
-      <h1 class="hero-title">Roster <span class="accent">Hub</span></h1>
-      <p class="hero-sub">Every player, every team, every Madden rating — pulled straight from the spreadsheet, no copy-paste required.</p>
-      <div class="hero-stats" id="heroStats">
-        <div class="stat"><div class="stat-num" id="statPlayers">—</div><div class="stat-label">Players</div></div>
-        <div class="stat"><div class="stat-num" id="statTeams">—</div><div class="stat-label">Teams</div></div>
-        <div class="stat"><div class="stat-num" id="statActive">—</div><div class="stat-label">Active</div></div>
-        <div class="stat"><div class="stat-num" id="statTop">—</div><div class="stat-label">Top OVR</div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ERROR BANNER -->
 <div id="errorBanner" class="error-banner" hidden>
   <div class="container error-banner-inner">
@@ -71,15 +52,8 @@
 </div>
 
 <!-- ROSTER -->
-<section id="roster" class="section">
+<section id="roster" class="section section-top">
   <div class="container">
-    <div class="section-head">
-      <div>
-        <h2 class="section-title">Roster</h2>
-        <p class="section-sub" id="rosterSub">Loading players from Google Sheets…</p>
-      </div>
-    </div>
-
     <div class="filters">
       <div class="search-box">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -93,6 +67,13 @@
         </select>
       </div>
 
+      <div class="select-box">
+        <label for="positionSelect">Position</label>
+        <select id="positionSelect">
+          <option value="all">All Positions</option>
+        </select>
+      </div>
+
       <div class="chip-group" id="groupFilter" role="tablist">
         <button class="chip active" data-group="all">All</button>
         <button class="chip" data-group="Offense">Offense</button>
@@ -103,7 +84,8 @@
       <div class="chip-group" id="statusFilter">
         <button class="chip active" data-status="all">Any Status</button>
         <button class="chip" data-status="ACT">Active</button>
-        <button class="chip" data-status="OTHER">Inactive / Other</button>
+        <button class="chip" data-status="IPP">IPP</button>
+        <button class="chip" data-status="OTHER">Inactive</button>
       </div>
 
       <div class="select-box">
