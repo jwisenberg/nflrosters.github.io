@@ -115,6 +115,27 @@
     if (!espnId) return null;
     return `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`;
   }
+  function collegeHeadshotUrl(espnId) {
+    if (!espnId) return null;
+    return `https://a.espncdn.com/i/headshots/college-football/players/full/${espnId}.png`;
+  }
+  // Headshot fallback chain: NFL roster photo -> college photo -> initials.
+  // Exposed on window because inline onerror handlers run outside this closure.
+  window.__rhImgFallback = function (img) {
+    const stage = img.dataset.stage;
+    const espnId = img.dataset.espn;
+    if (stage === 'nfl' && espnId) {
+      img.dataset.stage = 'college';
+      img.src = collegeHeadshotUrl(espnId);
+      return;
+    }
+    const span = document.createElement('span');
+    span.className = 'initials';
+    span.textContent = img.dataset.initials || '';
+    const parent = img.parentElement;
+    parent.innerHTML = '';
+    parent.appendChild(span);
+  };
 
   // -------- Google Sheets fetch (gviz JSON, no API key / backend needed) --------
   async function fetchSheet() {
@@ -284,7 +305,7 @@
     const ovrLabel = p.overall ? p.overall + ' OVR' : 'NR';
     const shot = headshotUrl(p.espnId);
     const avatarInner = shot
-      ? `<img src="${escape(shot)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span class=&quot;initials&quot;>${escape(initials(p.name))}</span>'" />`
+      ? `<img src="${escape(shot)}" alt="" loading="lazy" data-stage="nfl" data-espn="${escape(p.espnId)}" data-initials="${escape(initials(p.name))}" onerror="window.__rhImgFallback(this)" />`
       : `<span class="initials">${escape(initials(p.name))}</span>`;
     const sTier = statusTier(p.status);
     const statusBadge = sTier ? `<span class="status-badge status-${sTier}">${escape(statusLabel(p.status))}</span>` : '';
@@ -343,7 +364,7 @@
     const tier = ovrTier(p.overall);
     const shot = headshotUrl(p.espnId);
     const headshotInner = shot
-      ? `<img src="${escape(shot)}" alt="${escape(p.name)}" onerror="this.parentElement.innerHTML='<span class=&quot;initials&quot;>${escape(initials(p.name))}</span>'" />`
+      ? `<img src="${escape(shot)}" alt="${escape(p.name)}" data-stage="nfl" data-espn="${escape(p.espnId)}" data-initials="${escape(initials(p.name))}" onerror="window.__rhImgFallback(this)" />`
       : `<span class="initials">${escape(initials(p.name))}</span>`;
     const sTier = statusTier(p.status);
     const statusBadge = sTier ? `<span class="status-badge status-${sTier}" style="margin-top:6px;display:inline-block;">${escape(statusLabel(p.status))}</span>` : '';
