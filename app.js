@@ -14,7 +14,7 @@
   const REFRESH_MS = 5 * 60 * 1000; // auto-refresh every 5 minutes
 
   let ROSTER = [];
-  let state = { search: '', group: 'all', status: 'all', team: 'all', position: 'all', sort: 'overall' };
+  let state = { search: '', group: 'all', status: 'all', team: 'all', position: 'all', sort: 'jersey' };
 
   // -------- Theme toggle --------
   (function () {
@@ -79,6 +79,8 @@
   const OFFENSE_POS = new Set(['QB','HB','RB','FB','WR','TE','T','LT','RT','G','LG','RG','C','OL']);
   const DEFENSE_POS = new Set(['DE','DT','EDGE','LB','MLB','OLB','ROLB','LOLB','CB','S','FS','SS','DB','NT']);
   const SPECIAL_POS = new Set(['K','P','LS','KR','PR']);
+  // Preferred ordering for the Position dropdown. Anything not listed here is appended afterward, alphabetically.
+  const POSITION_ORDER = ['QB','RB','FB','WR','TE','C','G','T','DT','EDGE','LB','CB','S','K','P','LS'];
   function positionGroup(pos) {
     const p = (pos || '').toUpperCase();
     if (SPECIAL_POS.has(p)) return 'Special Teams';
@@ -90,15 +92,20 @@
   const STATUS_LABELS = {
     ACT: 'Active', PRA: 'Practice Squad', PS: 'Practice Squad', DEV: 'Practice Squad',
     PUP: 'PUP', NFI: 'NFI', IPP: 'IPP', IR: 'IR', INJ: 'IR',
-    SUS: 'Suspended', EXE: 'Exempt', RES: 'Reserved', FA: 'Free Agent', '': 'Free Agent',
+    SUS: 'Suspended', EXE: 'Exempt', RES: 'Reserved', FA: 'Free Agent',
   };
   function statusLabel(code) {
-    const c = (code || '').trim().toUpperCase();
-    return STATUS_LABELS[c] || c || 'Free Agent';
+    if (code === null || code === undefined || code === '') return '';
+    const c = String(code).trim().toUpperCase();
+    if (!c) return '';
+    return STATUS_LABELS[c] || c;
   }
   // Only ACT (green) and IPP (amber) get special treatment — everything else is red.
+  // Returns null when there's no status to show (e.g. Free Agents) so no badge renders.
   function statusTier(code) {
-    const c = (code || '').trim().toUpperCase();
+    if (code === null || code === undefined || code === '') return null;
+    const c = String(code).trim().toUpperCase();
+    if (!c) return null;
     if (c === 'ACT') return 'ACT';
     if (c === 'IPP') return 'WARN';
     return 'OUT';
@@ -134,6 +141,7 @@
       .map((row) => {
         const name = cellVal(row, 4);
         if (!name) return null;
+        const team = cellVal(row, 13) || 'Free Agents';
         return {
           pgid: cellVal(row, 0),
           tgid: cellVal(row, 1),
@@ -141,14 +149,15 @@
           ppos: cellVal(row, 3),
           name: String(name).trim(),
           jersey: cellVal(row, 5),
-          status: cellVal(row, 6) || '',
+          // Free Agents have no real status on a roster — keep it null so the badge area stays blank.
+          status: team === 'Free Agents' ? null : (cellVal(row, 6) || ''),
           height: cellVal(row, 7),
           weight: cellVal(row, 8),
           age: cellVal(row, 9),
           college: cellVal(row, 10) || '',
           salaryRaw: cellVal(row, 11),
           position: cellVal(row, 12) || '',
-          team: cellVal(row, 13) || 'Free Agents',
+          team: team,
           espnId: cellVal(row, 14),
         };
       })
@@ -211,7 +220,14 @@
   function populatePositionSelect() {
     const sel = document.getElementById('positionSelect');
     const current = sel.value || 'all';
-    const positions = Array.from(new Set(ROSTER.map((p) => p.position).filter(Boolean))).sort();
+    const positions = Array.from(new Set(ROSTER.map((p) => p.position).filter(Boolean))).sort((a, b) => {
+      const ia = POSITION_ORDER.indexOf(a);
+      const ib = POSITION_ORDER.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    });
     sel.innerHTML = '<option value="all">All Positions</option>' +
       positions.map((pos) => `<option value="${escape(pos)}">${escape(pos)}</option>`).join('');
     if (positions.includes(current) || current === 'all') sel.value = current;
@@ -226,7 +242,7 @@
     if (state.group !== 'all') list = list.filter((p) => positionGroup(p.position) === state.group);
     if (state.status === 'ACT') list = list.filter((p) => (p.status || '').toUpperCase() === 'ACT');
     if (state.status === 'IPP') list = list.filter((p) => (p.status || '').toUpperCase() === 'IPP');
-    if (state.status === 'OTHER') list = list.filter((p) => !['ACT', 'IPP'].includes((p.status || '').toUpperCase()));
+    if (state.status === 'OTHER') list = list.filter((p) => p.status && !['ACT', 'IPP'].includes(String(p.status).toUpperCase()));
     if (state.search) {
       const q = state.search.toLowerCase();
       list = list.filter(
@@ -271,6 +287,7 @@
       ? `<img src="${escape(shot)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span class=&quot;initials&quot;>${escape(initials(p.name))}</span>'" />`
       : `<span class="initials">${escape(initials(p.name))}</span>`;
     const sTier = statusTier(p.status);
+    const statusBadge = sTier ? `<span class="status-badge status-${sTier}">${escape(statusLabel(p.status))}</span>` : '';
     const salary = fmtMoney(parseSalary(p.salaryRaw));
     return `
       <article class="player-card" data-pgid="${escape(p.pgid)}" tabindex="0" role="button" aria-label="${escape(p.name)} details">
@@ -279,7 +296,7 @@
           <div class="pc-jersey">${jerseyLabel(p.jersey)}</div>
           <div class="pc-headinfo">
             <span class="pc-pos">${escape(p.position || '—')}</span>
-            <span class="status-badge status-${sTier}">${escape(statusLabel(p.status))}</span>
+            ${statusBadge}
           </div>
         </div>
         <div>
@@ -329,6 +346,7 @@
       ? `<img src="${escape(shot)}" alt="${escape(p.name)}" onerror="this.parentElement.innerHTML='<span class=&quot;initials&quot;>${escape(initials(p.name))}</span>'" />`
       : `<span class="initials">${escape(initials(p.name))}</span>`;
     const sTier = statusTier(p.status);
+    const statusBadge = sTier ? `<span class="status-badge status-${sTier}" style="margin-top:6px;display:inline-block;">${escape(statusLabel(p.status))}</span>` : '';
     const salary = fmtMoney(parseSalary(p.salaryRaw));
 
     return `
@@ -349,7 +367,7 @@
         <div class="mob-overall ${tier}">${p.overall || '—'}</div>
         <div>
           <div class="mob-label">Madden Overall</div>
-          <span class="status-badge status-${sTier}" style="margin-top:6px;display:inline-block;">${escape(statusLabel(p.status))}</span>
+          ${statusBadge}
         </div>
       </div>
       <div class="mb-grid">
