@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roster Hub · Live Madden Franchise Roster</title>
+<meta name="description" content="Roster Hub — a live, searchable roster pulled straight from your Madden franchise spreadsheet." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23121A14'/%3E%3Cpath d='M14 32 C14 20 22 12 32 12 C42 12 50 20 50 32 C50 44 42 52 32 52 C22 52 14 44 14 32 Z' fill='none' stroke='%23D7A24A' stroke-width='3'/%3E%3Cpath d='M20 32 L44 32 M27 25 L27 39 M37 25 L37 39' stroke='%23D7A24A' stroke-width='2.5'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a class="brand" href="#">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="29" fill="#121A14" stroke="#D7A24A" stroke-width="2"/>
+        <path d="M20 32 L44 32 M27 25 L27 39 M37 25 L37 39" stroke="#D7A24A" stroke-width="2.6" stroke-linecap="round"/>
+      </svg>
+      <div class="brand-text">
+        <div class="brand-title">ROSTER HUB</div>
+        <div class="brand-sub">Live from your sheet</div>
+      </div>
+    </a>
+    <div class="topbar-actions">
+      <span class="live-pill" id="syncPill" title="Synced from Google Sheets">
+        <span class="dot"></span> <span id="syncLabel">SYNCING</span>
+      </span>
+      <button class="icon-btn" id="refreshBtn" title="Refresh data" aria-label="Refresh data">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+      <button class="icon-btn" data-theme-toggle aria-label="Toggle theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="container hero-inner">
+    <div class="hero-content">
+      <span class="season-tag">LIVE FRANCHISE DATA</span>
+      <h1 class="hero-title">Roster <span class="accent">Hub</span></h1>
+      <p class="hero-sub">Every player, every team, every Madden rating — pulled straight from the spreadsheet, no copy-paste required.</p>
+      <div class="hero-stats" id="heroStats">
+        <div class="stat"><div class="stat-num" id="statPlayers">—</div><div class="stat-label">Players</div></div>
+        <div class="stat"><div class="stat-num" id="statTeams">—</div><div class="stat-label">Teams</div></div>
+        <div class="stat"><div class="stat-num" id="statActive">—</div><div class="stat-label">Active</div></div>
+        <div class="stat"><div class="stat-num" id="statTop">—</div><div class="stat-label">Top OVR</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ERROR BANNER -->
+<div id="errorBanner" class="error-banner" hidden>
+  <div class="container error-banner-inner">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+    <div>
+      <strong>Couldn't load the sheet.</strong>
+      <span id="errorDetail">Make sure it's shared as "Anyone with the link can view," then hit refresh.</span>
+    </div>
+    <button class="btn-retry" id="retryBtn">Retry</button>
+  </div>
+</div>
+
+<!-- ROSTER -->
+<section id="roster" class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">Roster</h2>
+        <p class="section-sub" id="rosterSub">Loading players from Google Sheets…</p>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="search" type="text" placeholder="Search by name, college, jersey #…" />
+      </div>
+
+      <div class="select-box">
+        <label for="teamSelect">Team</label>
+        <select id="teamSelect">
+          <option value="all">All Teams</option>
+        </select>
+      </div>
+
+      <div class="chip-group" id="groupFilter" role="tablist">
+        <button class="chip active" data-group="all">All</button>
+        <button class="chip" data-group="Offense">Offense</button>
+        <button class="chip" data-group="Defense">Defense</button>
+        <button class="chip" data-group="Special Teams">Special Teams</button>
+      </div>
+
+      <div class="chip-group" id="statusFilter">
+        <button class="chip active" data-status="all">Any Status</button>
+        <button class="chip" data-status="ACT">Active</button>
+        <button class="chip" data-status="OTHER">Inactive / Other</button>
+      </div>
+
+      <div class="select-box">
+        <label for="sort">Sort</label>
+        <select id="sort">
+          <option value="overall">Madden OVR (high → low)</option>
+          <option value="age_asc">Age (young → old)</option>
+          <option value="age_desc">Age (old → young)</option>
+          <option value="jersey">Jersey #</option>
+          <option value="name">Name (A–Z)</option>
+          <option value="team">Team (A–Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="rosterGrid" class="roster-grid"></div>
+    <div id="rosterEmpty" class="empty-state" hidden>No players match those filters.</div>
+    <div id="rosterSkeleton" class="roster-grid">
+      <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
+      <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>Roster Hub — data synced live from <a href="https://docs.google.com/spreadsheets/d/1lQapVF5-hK9l5MUoJOZJW6cDOttKazZQCRfifQhYJnQ/edit" target="_blank" rel="noopener">your Google Sheet</a>.</div>
+    <div id="lastSynced">—</div>
+  </div>
+</footer>
+
+<!-- PLAYER MODAL -->
+<div id="playerModal" class="modal" hidden>
+  <div class="modal-overlay" data-close></div>
+  <div class="modal-panel" role="dialog" aria-modal="true">
+    <button class="modal-close" data-close aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
