@@ -137,9 +137,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: var(--space-4); cursor: pointer; transition: var(--transition);
   text-align: left;
 }
-.player-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--team-primary, var(--primary)); border-radius: var(--radius-lg) 0 0 var(--radius-lg); transform: scaleY(0); transform-origin: top; transition: var(--transition); }
 .player-card:hover { border-color: var(--team-primary, var(--border-strong)); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.player-card:hover::before { transform: scaleY(1); }
 
 .pc-top { display: flex; align-items: flex-start; gap: var(--space-3); position: relative; }
 .pc-avatar { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--surface-3); border: 1px solid var(--border); display: grid; place-items: center; }
