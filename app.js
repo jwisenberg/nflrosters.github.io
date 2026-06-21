@@ -89,6 +89,52 @@
     return 'Offense';
   }
 
+  // Team color pairs (primary / secondary) used for the player-card border treatment.
+  const TEAM_COLORS = {
+    'Arizona Cardinals': { color: '#97233F', color2: '#000000' },
+    'Atlanta Falcons': { color: '#A71930', color2: '#000000' },
+    'Baltimore Ravens': { color: '#241773', color2: '#9E7C0C' },
+    'Buffalo Bills': { color: '#00338D', color2: '#C60C30' },
+    'Carolina Panthers': { color: '#0085CA', color2: '#000000' },
+    'Chicago Bears': { color: '#0B162A', color2: '#E64100' },
+    'Cincinnati Bengals': { color: '#FB4F14', color2: '#000000' },
+    'Cleveland Browns': { color: '#FF3C00', color2: '#311D00' },
+    'Dallas Cowboys': { color: '#002244', color2: '#B0B7BC' },
+    'Denver Broncos': { color: '#002244', color2: '#FB4F14' },
+    'Detroit Lions': { color: '#0076B6', color2: '#B0B7BC' },
+    'Green Bay Packers': { color: '#203731', color2: '#FFB612' },
+    'Houston Texans': { color: '#03202F', color2: '#A71930' },
+    'Indianapolis Colts': { color: '#002C5F', color2: '#a5acaf' },
+    'Jacksonville Jaguars': { color: '#006778', color2: '#000000' },
+    'Kansas City Chiefs': { color: '#E31837', color2: '#FFB612' },
+    'Los Angeles Rams': { color: '#003594', color2: '#FFD100' },
+    'Los Angeles Chargers': { color: '#007BC7', color2: '#ffc20e' },
+    'Las Vegas Raiders': { color: '#000000', color2: '#A5ACAF' },
+    'Miami Dolphins': { color: '#008E97', color2: '#F58220' },
+    'Minnesota Vikings': { color: '#4F2683', color2: '#FFC62F' },
+    'New England Patriots': { color: '#002244', color2: '#C60C30' },
+    'New Orleans Saints': { color: '#D3BC8D', color2: '#000000' },
+    'New York Giants': { color: '#0B2265', color2: '#A71930' },
+    'New York Jets': { color: '#003F2D', color2: '#000000' },
+    'Oakland Raiders': { color: '#000000', color2: '#A5ACAF' },
+    'Philadelphia Eagles': { color: '#004C54', color2: '#A5ACAF' },
+    'Pittsburgh Steelers': { color: '#000000', color2: '#FFB612' },
+    'San Diego Chargers': { color: '#007BC7', color2: '#ffc20e' },
+    'Seattle Seahawks': { color: '#002244', color2: '#69be28' },
+    'San Francisco 49ers': { color: '#AA0000', color2: '#B3995D' },
+    'St. Louis Rams': { color: '#003594', color2: '#FFD100' },
+    'Tampa Bay Buccaneers': { color: '#A71930', color2: '#322F2B' },
+    'Tennessee Titans': { color: '#4495D2', color2: '#D50A0A' },
+    'Washington Commanders': { color: '#5A1414', color2: '#FFB612' },
+  };
+  // Returns a CSS custom-property string for the card border, or '' for Free Agents / unknown teams
+  // (in which case the card just keeps the theme's default neutral border).
+  function teamBorderStyle(team) {
+    const t = TEAM_COLORS[team];
+    if (!t || team === 'Free Agents') return '';
+    return ` style="--team-primary:${t.color}; --team-secondary:${t.color2};"`;
+  }
+
   const STATUS_LABELS = {
     ACT: 'Active', PRA: 'Practice Squad', PS: 'Practice Squad', DEV: 'Practice Squad',
     PUP: 'PUP', NFI: 'NFI', IPP: 'IPP', IR: 'IR', INJ: 'IR',
@@ -311,7 +357,7 @@
     const statusBadge = sTier ? `<span class="status-badge status-${sTier}">${escape(statusLabel(p.status))}</span>` : '';
     const salary = fmtMoney(parseSalary(p.salaryRaw));
     return `
-      <article class="player-card" data-pgid="${escape(p.pgid)}" tabindex="0" role="button" aria-label="${escape(p.name)} details">
+      <article class="player-card" data-pgid="${escape(p.pgid)}" tabindex="0" role="button" aria-label="${escape(p.name)} details"${teamBorderStyle(p.team)}>
         <div class="pc-top">
           <div class="pc-avatar">${avatarInner}</div>
           <div class="pc-jersey">${jerseyLabel(p.jersey)}</div>
