@@ -133,13 +133,13 @@ button { font-family: inherit; cursor: pointer; }
 .player-card {
   position: relative;
   display: flex; flex-direction: column; gap: var(--space-3);
-  background: var(--surface); border: 1px solid var(--team-secondary, var(--border)); border-radius: var(--radius-lg);
+  background: var(--surface); border: 1px solid var(--team-primary, var(--border)); border-radius: var(--radius-lg);
   box-shadow: 0 0 0 2px var(--team-primary, transparent);
   padding: var(--space-4); cursor: pointer; transition: var(--transition);
   text-align: left;
 }
 .player-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--primary); border-radius: var(--radius-lg) 0 0 var(--radius-lg); transform: scaleY(0); transform-origin: top; transition: var(--transition); }
-.player-card:hover { border-color: var(--team-secondary, var(--border-strong)); transform: translateY(-2px); box-shadow: 0 0 0 2px var(--team-primary, transparent), var(--shadow-md); }
+.player-card:hover { border-color: var(--team-primary, var(--border-strong)); transform: translateY(-2px); box-shadow: 0 0 0 2px var(--team-primary, transparent), var(--shadow-md); }
 .player-card:hover::before { transform: scaleY(1); }
 
 .pc-top { display: flex; align-items: flex-start; gap: var(--space-3); position: relative; }
