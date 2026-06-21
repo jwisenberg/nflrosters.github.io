@@ -132,7 +132,7 @@
   function teamBorderStyle(team) {
     const t = TEAM_COLORS[team];
     if (!t || team === 'Free Agents') return '';
-    return ` style="--team-primary:${t.color}; --team-secondary:${t.color2};"`;
+    return ` style="--team-primary:${t.color};"`;
   }
 
   const STATUS_LABELS = {
@@ -252,7 +252,7 @@
       pill.className = 'live-pill is-live';
       label.textContent = 'LIVE';
       errBanner.hidden = true;
-      document.getElementById('lastSynced').textContent = 'Last synced ' + new Date().toLocaleTimeString();
+      pill.title = 'Synced from Google Sheets — last synced ' + new Date().toLocaleTimeString();
       populateTeamSelect();
       populatePositionSelect();
       renderRoster();

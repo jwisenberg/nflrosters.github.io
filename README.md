@@ -53,9 +53,9 @@ The status filter chips above the grid (Any Status / Active / IPP / Inactive) fo
 
 ## Team-color card borders
 
-Each player card gets a double border based on their team: a 1px inner border in the team's secondary color, and a 2px outer ring in the team's primary color. The color pairs live in `TEAM_COLORS` near the top of `app.js` (built from the colors you provided) — edit that object if a team's colors ever need adjusting, or to add a team that's missing.
+Each player card gets a 3px solid border in the team's primary color (and the hover accent bar on the left edge matches too). The colors live in `TEAM_COLORS` near the top of `app.js` (built from the colors you provided) — edit that object if a team's colors ever need adjusting, or to add a team that's missing.
 
-Free Agents (and any team not found in `TEAM_COLORS`) just get the normal neutral border, no colored ring.
+Free Agents (and any team not found in `TEAM_COLORS`) just get the normal neutral border.
 
 ## Filters
 
